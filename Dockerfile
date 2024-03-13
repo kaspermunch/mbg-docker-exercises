@@ -1,10 +1,15 @@
 
 ARG OS_TYPE=x86_64
-
 ARG UBUNTU_VER=23.10
 ARG CONDA_VER=23.10.0-1
-ARG PY_VER=py38
 
+ARG PY_VER=py38
+# ARG PY_VER=py39
+# ARG PY_VER=py310
+# ARG PY_VER=py311
+# ARG PY_VER=py312
+
+# base image
 FROM ubuntu:${UBUNTU_VER}
 
 LABEL maintainer="Kasper Munch <kaspermunch@birc.au.dk>"
@@ -12,7 +17,9 @@ LABEL maintainer="Kasper Munch <kaspermunch@birc.au.dk>"
 # send stdout and stderr straight to terminal
 ENV PYTHONUNBUFFERED 1
 
-# system packages 
+# centally installed system packages. Always install curl and lib6
+# (this is where you install any packages required for compilation 
+# like build-essential libc6-dev libpthread-stubs0-dev)
 RUN apt update \
     && apt install -y --no-upgrade libc6 curl \
     && apt remove --purge && rm -rf /var/lib/apt/lists/*
@@ -27,94 +34,100 @@ RUN curl -LO "http://repo.continuum.io/miniconda/Miniconda3-${PY_VER}_${CONDA_VE
     && bash Miniconda3-${PY_VER}_${CONDA_VER}-Linux-${OS_TYPE}.sh -p /miniconda -b \
     && rm Miniconda3-${PY_VER}_${CONDA_VER}-Linux-${OS_TYPE}.sh
 ENV PATH=/miniconda/bin:${PATH}
+RUN conda init
 
-# # install packages for Magdalena's exercise
-# RUN conda install -c bioconda -c conda-forge -c maximinio -c r -q -y \
-#         git jupyterlab rpy2 r-essentials \
-#         bowtie2 macs3 samtools bioconductor-chipseeker \
-#         bioconductor-txdb.hsapiens.ucsc.hg38.knowngene zip ncurses \
-#     && conda clean -afy     
-
-# install juptyer and anaconda-toolbox
-RUN conda install -c conda-forge -q -y \
-       jupyterlab ipython nodejs anaconda-toolbox \
+# install packages for Magdalena's exercise (REQUIRES python 3.8)
+RUN conda install -c bioconda -c conda-forge -c maximinio -c r -q -y \
+        git jupyterlab rpy2 r-essentials \
+        bowtie2 macs3 samtools bioconductor-chipseeker \
+        bioconductor-txdb.hsapiens.ucsc.hg38.knowngene zip ncurses \
     && conda clean -afy     
 
-# openssl genrsa -out certificate.key 4096
-# openssl req -new -x509 -text -key certificate.key -out certificate.crt
+# run in bash to activate base environment
+ENTRYPOINT ["/bin/bash", "-c", "jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root"]
 
-# # Copy the SSL certificate files into the image
-# COPY certificate.crt /etc/nginx/certs/certificate.crt
-# COPY certificate.key /etc/nginx/certs/certificate.key
-# # Configure Nginx to use the SSL certificate
-# RUN mkdir -p /etc/nginx/conf.d
-# RUN echo "server { \
-#     listen 443 ssl; \
-#     server_name example.com; \
-#     ssl_certificate /etc/nginx/certs/certificate.crt; \
-#     ssl_certificate_key /etc/nginx/certs/certificate.key; \
-#     location / { \
-#         root /usr/share/nginx/html; \
-#         index index.html index.htm; \
-#     } \
-# }" > /etc/nginx/conf.d/default.conf
+#############################################################
 
-###########################################################
-ENTRYPOINT ["jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-root", "--NotebookApp.ip=192.168.65.1"]
+# # install juptyer and anaconda-toolbox
+# RUN conda update -n base conda
+# RUN conda install -c anaconda -c conda-forge -q -y \
+#         'jupyter_server<2' \
+#         jupyterlab ipython nodejs anaconda-toolbox anaconda-cloud-auth anaconda-cloud clyent \
+#     && conda clean -afy     
 
-# build:
+# # run in bash to activate base environment
+# ENTRYPOINT ["/bin/bash", "-c", "jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root"]
+
+#############################################################
+
+# # install juptyer and anaconda-toolbox
+# RUN conda update -n base conda
+# RUN conda install -c anaconda -c conda-forge -c plotly -c kaspermunch  -q -y popgen-dashboards=1.1.5 \
+#     && conda clean -afy     
+
+# # run in bash to activate base environment
+# ENTRYPOINT ["/bin/bash", "-c", "arg-dashboard --ip='0.0.0.0'"]
+
+#############################################################
+
+# # install juptyer and anaconda-toolbox'
+# RUN conda update -n base conda
+# RUN conda install -c anaconda -c conda-forge -q -y jupyterlab anaconda-toolbox \
+#     && conda clean -afy   
+
+# # run in bash to activate base environment
+# ENTRYPOINT ["/bin/bash", "-c", "jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root"]
+
+#############################################################
+
+# # PG for popgen-dashboards
+# RUN conda update -n base conda
+# RUN conda install -c anaconda -c conda-forge -c plotly -c kaspermunch -q -y \
+#        jupyterlab ipython nodejs notebook ipympl ipython seaborn statsmodels popgen-dashboards \
+#     && conda clean -afy 
+
+# # run in bash to activate base environment
+# ENTRYPOINT ["/bin/bash", "-c", "jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root"]
+
+#############################################################
+
+
+
+# ENTRYPOINT ["/bin/bash", "-c", "jupyter lab --ip='*' --port=8888 --no-browser --allow-root"]
+
+# ENTRYPOINT ["/bin/bash", "-c", "anaconda login --basic anaconda.cloud && jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root"]
+# ENTRYPOINT ["/bin/bash", "-c", "mkdir -p ~/.anaconda && cp /userhome/.anaconda/keyring ~/.anaconda && jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root"]
+
+
+
+
+
+
+
+
+# build
 # docker build --platform=linux/amd64 -t kaspermunch/jupyter-linux-amd64:latest .
 
-# run interactive:
-# docker run --rm -it --network=host --entrypoint /bin/bash kaspermunch/jupyter-linux-amd64:latest
+# jupyter mac
+# docker run --rm -v $HOME/.anaconda:/root/.anaconda -v $(pwd):$(pwd) -w $(pwd) -i -t -p 8888:8888 kaspermunch/jupyter-linux-amd64:latest 
+# jupyter windows
+# docker run --rm -v //c/users/$env:username/.anaconda:/root/.anaconda -v //c/users/$env:username://c/users/$env:username -i -t -p 8888:8888 kaspermunch/jupyter-linux-amd64:latest 
 
-# run with jupyterlab
-# docker run --rm -v $(pwd):$(pwd) -w $(pwd) -i -t -p 8888:8888 kaspermunch/jupyter-linux-amd64:latest
+# bash mac
+# docker run --rm -v $HOME/.anaconda:/root/.anaconda -v $(pwd):$(pwd) -w $(pwd) -i -t -p 8888:8888 kaspermunch/jupyter-linux-amd64:latest 
 
+# push
+# docker push kaspermunch/jupyter-linux-amd64:latest
 
-###########################################################
+# docker search docker hub for images:
+# docker search kaspermunch/jupyter-
 
-
-# ENTRYPOINT ["jupyter", "lab", "--port=8888", "--no-browser", "--allow-root"]
-# ENTRYPOINT ["jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-root"]
-# ENTRYPOINT ["jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-root", "--NotebookApp.allow_origin='*'"]
-# ENTRYPOINT ["jupyter", "lab", "--ip=*", "--port=8888", "--no-browser", "--allow-root", "--NotebookApp.allow_origin='*'"]
-
-# ENTRYPOINT ["jupyter", "lab", "--ip=*", "--port=8888", "--no-browser", "--allow-root"]
-# ENTRYPOINT ["jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-root"]
-# ENTRYPOINT ["jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-root", "--NotebookApp.token=''"]
-# ENTRYPOINT ["jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-root"]
-# ENTRYPOINT ["jupyter", "lab", "--ip=host.docker.internal", "--port=8888", "--no-browser", "--allow-root"]
-# ENTRYPOINT ["jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-root", "--NotebookApp.local_hostnames=[host.docker.internal]"]
-
-#CMD []
+# get versions of an image
+# wget -q -O - "https://hub.docker.com/v2/namespaces/kaspermunch/repositories/jupyter-linux-amd64/tags?page_size=100" | grep -o '"name": *"[^"]*' | grep -o '[^"]*$'
 
 
 
 
-###########################################################
 
-
-
-# build:
-# docker build --platform=linux/amd64 -t kaspermunch/jupyter-linux-amd64:latest .
-
-# run interactive:
-# docker run --rm -it --network=host --entrypoint /bin/bash kaspermunch/jupyter-linux-amd64:latest
-
-# run with jupyterlab
-# docker run --rm -v $(pwd):$(pwd) -w $(pwd) -i -t -p 8888:8888 kaspermunch/jupyter-linux-amd64:latest
-
-
-
-# docker network create -d host my-net
-# mac/linux
-# docker network create -d host my-net
-# docker run --network=host --rm --volume=$(pwd):$(pwd) --workdir=$(pwd) --interactive --tty --name=jupyter-linux kaspermunch/jupyter-linux-amd64:latest
-# windows
-# docker run --network=host --rm --volume=//c/users/$env:username://c/users/$env:username --workdir=//c/users/$env:username --interactive --tty --name=jupyter-linux --name=jupyter-linux kaspermunch/jupyter-linux-amd64:latest
-
-
-
-
-# docker build --network=host --platform=linux/amd64 -t kaspermunch/jupyter-linux-amd64:latest .
+#$PWD -replace '\\', '/'
+#$path.Replace("\", "/").Replace("C:", "//c")
