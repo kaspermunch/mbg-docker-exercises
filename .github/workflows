@@ -1,0 +1,23 @@
+name: publish
+
+on:
+  push:
+    branches:
+      - 'main'
+
+jobs:
+  publish-hello-docker-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Login to GitHub Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build the Docker image
+      run: |
+             docker build . --tag ghcr.io/kaspermunch/jupyter-linux-amd64:latest
+             docker run ghcr.io/kaspermunch/jupyter-linux-amd64:latest
+             docker push ghcr.io/kaspermunch/jupyter-linux-amd64:latest  
