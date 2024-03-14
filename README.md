@@ -4,7 +4,6 @@ Install Docker
 On Mac, do not enable "Start Docker Desktop when you sign in to your computer". It will make it choke when the computer goes to sleep.
 
 
-
 - mbg-base: curl, git, gzip, tar
   - mbg-base-py38: python-version
     - mbg-base-jupyter-py38: mbg-base-py38, jupyterlab, nodejs, anaconda-toolbox  
