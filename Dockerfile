@@ -1,4 +1,6 @@
 
+ARG GITHUB_REPO=mbg-docker-exercises
+
 ARG OS_TYPE=x86_64
 ARG UBUNTU_VER=23.10
 ARG CONDA_VER=23.10.0-1
@@ -36,15 +38,26 @@ RUN curl -LO "http://repo.continuum.io/miniconda/Miniconda3-${PY_VER}_${CONDA_VE
 ENV PATH=/miniconda/bin:${PATH}
 RUN conda init
 
+#############################################################
+
 # install packages for Magdalena's exercise (REQUIRES python 3.8)
-RUN conda install -c bioconda -c conda-forge -c maximinio -c r -q -y \
-        git jupyterlab rpy2 r-essentials \
+RUN conda update -n base conda \
+    && conda install -n base -c bioconda -c conda-forge -c maximinio -c r -q -y \
+        git jupyterlab jupyterlab-git rpy2 r-essentials \
         bowtie2 macs3 samtools bioconductor-chipseeker \
         bioconductor-txdb.hsapiens.ucsc.hg38.knowngene zip ncurses \
+        openssh \
+    && conda config --set solver libmamba \
     && conda clean -afy     
 
+#RUN conda env update --name base --file ${GITHUB_REPO}/binder/environmnet.yml --prune && conda clean -afy
+
+
+
 # run in bash to activate base environment
-ENTRYPOINT ["/bin/bash", "-c", "jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root"]
+ENTRYPOINT ["/bin/bash", "-c", "git clone git@github.com:kaspermunch/mbg-docker-exercises.git ; jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root"]
+
+# docker run --rm -v $HOME/.ssh:/root/.ssh -v $HOME/.anaconda:/root/.anaconda -v $(pwd):$(pwd) -w $(pwd) -i -t -p 8888:8888 kaspermunch/jupyter-linux-amd64:latest 
 
 #############################################################
 
@@ -99,10 +112,11 @@ ENTRYPOINT ["/bin/bash", "-c", "jupyter lab --ip=0.0.0.0 --port=8888 --no-browse
 # ENTRYPOINT ["/bin/bash", "-c", "mkdir -p ~/.anaconda && cp /userhome/.anaconda/keyring ~/.anaconda && jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root"]
 
 
+# run container interactively:
+#docker run --rm -v $(pwd):$(pwd)  -it --entrypoint /bin/bash kaspermunch/jupyter-linux-amd64:latest
 
-
-
-
+# produce conda environment file from container:
+# docker run --rm -it --entrypoint /bin/bash kaspermunch/jupyter-linux-amd64:latest -c 'conda run -n base conda env export' > environment.yml
 
 
 # build
